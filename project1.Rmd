@@ -12,6 +12,44 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
-df1 <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_genes.csv')
-df2 <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_series_matrix.csv')
+genes <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_genes.csv', stringsAsFactors = TRUE)
+metadata <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_series_matrix.csv', stringsAsFactors = TRUE)
+```
+DF1 has 100 rows and 127 columns
+  col1: genes 
+  col2-127: subject ids containing the following titles:
+    COVID(or NonCovid)_subID_sex_ICU(or NONICU)
+DF2 has 126 rows and 25 columns
+  rows are subjectIDs
+  Cols are: "participant_id"                         
+  [2] "geo_accession"                          
+  [3] "status"                                 
+  [4] "X.Sample_submission_date"               
+  [5] "last_update_date"                       
+  [6] "type"                                   
+  [7] "channel_count"                          
+  [8] "source_name_ch1"                        
+  [9] "organism_ch1"                           
+  [10] "disease_status"                         
+  [11] "age"                                    
+  [12] "sex"                                    
+  [13] "icu_status"                             
+  [14] "apacheii" - measure of disease severity (lower == less mortality)                   
+  [15] "charlson_score" - risk of death within 1 year of hospitalization for people with specific comorbid conditions                   
+  [16] "mechanical_ventilation"             
+  [17] "ventilator.free_days"                   
+  [18] "hospital.free_days_post_45_day_followup"
+  [19] "ferritin.ng.ml."                        
+  [20] "crp.mg.l." - c reactive protein, produced when inflamed                          
+  [21] "ddimer.mg.l_feu." - checks for blood clotting                    
+  [22] "procalcitonin.ng.ml.." - high levels means body is at risk for going into sepsis (organ failure)                 
+  [23] "lactate.mmol.l."- oxygen level, low values means body is not getting enough oxygen                     
+  [24] "fibrinogen" - helps to heal wounds, also involved in blood clotting                            
+  [25] "sofa"- sequential organ failure assessment   
+
+```{r}
+## to do: 
+### choose one gene, one continuous covariate, and two categorial covariates 
+### goal: generate histogram for gene expression, scatterplot for gene expression and continous covariate, boxplot of gene expression by categorial covariate 
+###
 ```
