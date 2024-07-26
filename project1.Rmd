@@ -6,50 +6,51 @@ date: "2024-07-23"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
 ```
 
 ## Import and summarize data
 
 
 ```{r}
-genes <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_genes.csv', stringsAsFactors = TRUE)
-metadata <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_series_matrix.csv', stringsAsFactors = TRUE)
+genes <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_genes.csv', sep = ',', header = TRUE)
+metadata <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_series_matrix.csv', header = TRUE)
+dim(genes)
 ```
-DF1 has 100 rows and 127 columns
-  col1: genes 
-  col2-127: subject ids containing the following titles:
-    COVID(or NonCovid)_subID_sex_ICU(or NONICU)
-DF2 has 126 rows and 25 columns
-  rows are subjectIDs
-  Cols are: "participant_id"                         
-  [2] "geo_accession"                          
-  [3] "status"                                 
-  [4] "X.Sample_submission_date"               
-  [5] "last_update_date"                       
-  [6] "type"                                   
-  [7] "channel_count"                          
-  [8] "source_name_ch1"                        
-  [9] "organism_ch1"                           
-  [10] "disease_status"                         
-  [11] "age"                                    
-  [12] "sex"                                    
-  [13] "icu_status"                             
-  [14] "apacheii" - measure of disease severity (lower == less mortality)                   
-  [15] "charlson_score" - risk of death within 1 year of hospitalization for people with specific comorbid conditions                   
-  [16] "mechanical_ventilation"             
-  [17] "ventilator.free_days"                   
-  [18] "hospital.free_days_post_45_day_followup"
-  [19] "ferritin.ng.ml."                        
-  [20] "crp.mg.l." - c reactive protein, produced when inflamed                          
-  [21] "ddimer.mg.l_feu." - checks for blood clotting                    
-  [22] "procalcitonin.ng.ml.." - high levels means body is at risk for going into sepsis (organ failure)                 
-  [23] "lactate.mmol.l."- oxygen level, low values means body is not getting enough oxygen                     
-  [24] "fibrinogen" - helps to heal wounds, also involved in blood clotting                            
-  [25] "sofa"- sequential organ failure assessment   
+
 
 ```{r}
-## to do: 
-### choose one gene, one continuous covariate, and two categorial covariates 
-### goal: generate histogram for gene expression, scatterplot for gene expression and continous covariate, boxplot of gene expression by categorial covariate 
-###
+## cleaning up metadata
+metadata_clean <- dplyr::select(metadata, -c("X.Sample_submission_date","channel_count","status","last_update_date","type","channel_count","source_name_ch1","organism_ch1","apacheii","ferritin.ng.ml.","ddimer.mg.l_feu.","procalcitonin.ng.ml..","lactate.mmol.l.","fibrinogen","sofa"))
+head(metadata_clean)
+
 ```
+```{r}
+#transposing the genes x samples matrix to samples x genes
+rownames(genes) <- genes$X #assigning row names
+head(genes)
+genes_t <- as.data.frame(t(dplyr::select(genes, -c('X')))) #transpose as a dataframe
+head(genes_t)
+genes_t$participant_id <- rownames(genes_t)
+head(genes_t)#assigning participant id column for later joining
+which(genes_t$participant_id == "COVID_06_.y_male_NonICU") #finding column with mismatch to metadata
+genes_t$participant_id[6] <- "COVID_06_:y_male_NonICU" #reassinging value to match metadata
+
+```
+
+```{r}
+#combining the samples x genes matrix to the metadata
+all_data <- dplyr::inner_join(genes_t, metadata_clean, by = 'participant_id')
+head(all_data)
+dim(all_data) #should be 126 x 111 (100 genes, 11 cols of metadata for all 126 samples)
+```
+```{r}
+ggplot(data = all_data, aes(A1BG)) +
+  geom_histogram()
+```
+```{r}
+
+```
+
+
+
