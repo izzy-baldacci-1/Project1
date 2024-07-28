@@ -56,7 +56,7 @@ length(interesting_genes)
 curated_genes_long <- all_data_long %>% dplyr::filter(Gene %in% interesting_genes)
 
 #used to look for interesting genes
-ggplot(all_data_long[(126*90):(126*100),], aes(x = Gene, y = count, color = disease_status)) +
+ggplot(all_data_long, aes(x = Gene, y = count, color = disease_status)) +
   geom_boxplot() +
   theme(
     axis.text.x = element_text(angle = 90),
@@ -76,9 +76,9 @@ ggplot(all_data, aes(ABHD17A)) +
   geom_histogram(bins = 30 , color = 'purple1', fill = 'slateblue1') +
   theme_minimal() +
   theme(plot.title = element_text(hjust = .4, size = 20)) +
-  labs(title = 'Distribution of ABHD17A count across samples', x = 'ABHD17A Count', y = 'Frequency', size = 20) +
+  labs(title = 'Distribution of ABHD17A count across samples', x = 'ABHD17A Expression', y = 'Frequency', size = 20) +
   scale_fill_manual(values = c('purple1')) +
-  annotate(geom = 'text', x = 30, y = 12, label = paste('N:', length(all_data$ABHD17A),' samples', '\nMean count: ', mean_count, '\nsd: ', sd_count))
+  annotate(geom = 'text', x = 30, y = 12, label = paste('N:', length(all_data$ABHD17A),' samples', '\nMean Expression: ', mean_count, '\nsd: ', sd_count))
 
 ```
 
@@ -95,7 +95,7 @@ ggplot(all_data %>% filter(crp.mg.l. != ' unknown') %>% dplyr::arrange(crp.mg.l.
     plot.title = element_text(hjust = .4, size = 20),
     legend.position = 'bottom'
   ) +
-  labs(title = 'CRP levels vs ABHD17A count', x = 'CRP Level (mg/L)', y = 'ABHD17A count') +
+  labs(title = 'CRP levels vs ABHD17A Expression', x = 'CRP Level (mg/L)', y = 'ABHD17A Expression') +
   scale_color_manual(labels = c('COVID', 'NOT COVID '), values = colorPalette) 
   
 
@@ -103,13 +103,16 @@ ggplot(all_data %>% filter(crp.mg.l. != ' unknown') %>% dplyr::arrange(crp.mg.l.
 
 ```{r}
 
+n_covid_pos <- length(all_data[,which(all_data$disease_status == 'disease state: COVID-19')])
+n_covid_neg <- length((all_data %>% dplyr::filter(disease_status != 'disease state: COVID-19'))$participant_id)
+
 #two categorical 
 dplyr::filter(curated_genes_long, Gene == 'ABHD17A') %>% 
-  ggplot(aes(x = disease_status, y = count, fill = mechanical_ventilation)) +
+  ggplot(aes(x = disease_status, y = count, color = 'purple', fill = mechanical_ventilation)) +
   geom_boxplot() +
   theme_minimal() + 
   theme(legend.position = 'bottom') +
-  labs(title = 'Comparing ABHD17A levels across disease status and mechanical ventilation', x = 'Disease Status', y = 'ABHD17A count') +
+  labs(title = 'Comparing ABHD17A Expression across disease status and mechanical ventilation', x = 'Disease Status', y = 'ABHD17A Expression') +
   scale_fill_manual(labels = c('no ventilator', 'ventilator'), values = c('ghostwhite', 'mediumvioletred')) +
   scale_x_discrete(labels = c('COVID', 'NON-COVID'))
 
