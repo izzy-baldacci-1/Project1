@@ -1,0 +1,121 @@
+---
+title: "project1_pretty"
+output: pdf_document
+date: "2024-07-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+```
+
+## Import and summarize data
+
+
+```{r}
+genes <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_genes.csv', sep = ',', header = TRUE)
+metadata <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_series_matrix.csv', header = TRUE)
+dim(genes)
+```
+
+##Clean up metadata
+```{r}
+## cleaning up metadata
+metadata_clean <- dplyr::select(metadata, -c("X.Sample_submission_date","channel_count","status","last_update_date","type","channel_count","source_name_ch1","organism_ch1","apacheii","ferritin.ng.ml.","ddimer.mg.l_feu.","procalcitonin.ng.ml..","lactate.mmol.l.","fibrinogen","sofa"))
+head(metadata_clean)
+
+```
+
+##Transpose Genes dataframe 
+
+```{r}
+#transposing the genes x samples matrix to samples x genes
+rownames(genes) <- genes$X #assigning row names
+head(genes)
+genes_t <- as.data.frame(t(dplyr::select(genes, -c('X')))) #transpose as a dataframe
+head(genes_t)
+genes_t$participant_id <- rownames(genes_t)
+head(genes_t)#assigning participant id column for later joining
+which(genes_t$participant_id == "COVID_06_.y_male_NonICU") #finding column with mismatch to metadata
+genes_t$participant_id[6] <- "COVID_06_:y_male_NonICU" #reassinging value to match metadata
+```
+
+##Combining metadata and genes dataframe
+
+```{r}
+#combining the samples x genes matrix to the metadata
+all_data <- dplyr::inner_join(genes_t, metadata_clean, by = 'participant_id')
+head(all_data)
+dim(all_data) #should be 126 x 111 (100 genes, 11 cols of metadata for all 126 samples)
+```
+
+##Creating long dataframe for later plots
+
+```{r}
+all_data_long <- all_data %>% tidyr::gather(key = Gene, value = count, 1:100)
+all_data_long
+
+interesting_genes <- c('AAAS', 'AAACS', 'A2M', 'AAGAB','AAK1','ABCD1','ABCG1', 'ABHD17A', 'ABHD17A','ABI1','AAMP', 'AATK','ABAT',
+                       'ABCA1','ABCB10','ABHD13','ABHD14','ABHD3')
+
+curated_genes_long <- all_data_long %>% dplyr::filter(Gene %in% interesting_genes)
+```
+
+##Visualizing the mean expression of Gene ABHD17A
+```{r}
+#histogram
+mean_count <- round(mean(all_data$ABHD17A),3)
+sd_count <- round(sd(all_data$ABHD17A),3)
+
+
+ggplot(all_data, aes(ABHD17A)) +
+  geom_histogram(bins = 30 , color = 'purple1', fill = 'slateblue1') +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = .4, size = 20)) +
+  labs(title = 'Distribution of ABHD17A count across samples', x = 'ABHD17A Expression', y = 'Frequency', size = 20) +
+  scale_fill_manual(values = c('purple1')) +
+  annotate(geom = 'text', x = 30, y = 12, label = paste('N:', length(all_data$ABHD17A),' samples', '\nMean Expression: ', mean_count, '\nsd: ', sd_count))
+```
+
+##Visualizing Scatterplot of Gene vs CRP
+
+```{r}
+
+#scatterplot 
+colorPalette <- c('violetred', 'grey28')
+
+all_data$crp.mg.l. <- as.numeric(all_data$crp.mg.l.)
+ggplot(all_data %>% filter(crp.mg.l. != ' unknown') %>% dplyr::arrange(crp.mg.l.), aes(x = crp.mg.l. , y =  ABHD17A , color = disease_status)) +
+  geom_point() +
+  theme(
+    axis.text.x = element_text(angle=90),
+    plot.title = element_text(hjust = .4, size = 20),
+    legend.position = 'bottom'
+  ) +
+  labs(title = 'CRP levels vs ABHD17A Expression', x = 'CRP Level (mg/L)', y = 'ABHD17A Expression') +
+  scale_color_manual(labels = c('COVID', 'NOT COVID '), values = colorPalette) 
+  
+
+```
+
+##boxplot
+```{r}
+n_covid_pos <- length(all_data[,which(all_data$disease_status == 'disease state: COVID-19')])
+n_covid_neg <- length((all_data %>% dplyr::filter(disease_status != 'disease state: COVID-19'))$participant_id)
+
+#two categorical 
+dplyr::filter(curated_genes_long, Gene == 'ABHD17A') %>% 
+  ggplot(aes(x = disease_status, y = count, fill = mechanical_ventilation)) +
+  geom_boxplot() +
+  theme_minimal() + 
+  theme(legend.position = 'bottom') +
+  labs(title = 'Comparing ABHD17A Expression across disease status and mechanical ventilation', x = 'Disease Status', y = 'ABHD17A Expression') +
+  scale_fill_manual(labels = c('no ventilator', 'ventilator'), values = c('ghostwhite', 'mediumvioletred')) +
+  scale_x_discrete(labels = c('COVID', 'NON-COVID'))
+
+```
+
+
+
+
