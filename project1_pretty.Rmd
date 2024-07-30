@@ -47,6 +47,12 @@ genes_t$participant_id[6] <- "COVID_06_:y_male_NonICU" #reassinging value to mat
 ```{r}
 #combining the samples x genes matrix to the metadata
 all_data <- dplyr::inner_join(genes_t, metadata_clean, by = 'participant_id')
+crp_filtered <- all_data %>% filter(crp.mg.l. != ' unknown') #filter out unknowns
+crp_filtered$crp.mg.l. <- as.numeric(crp_filtered$crp.mg.l.) #make sure the column is numeric
+crp_filtered$crp.level <- cut(crp_filtered$crp.mg.l., breaks = c(0, 3, 10, 100, 500000), labels = c('normal', 'moderate', 'high', 'severe')) 
+
+# levels taken from: https://www.ncbi.nlm.nih.gov/books/NBK441843/#:~:text=Interpretation%20of%20CRP%20levels%3A,smoking%2C%20and%20genetic%20polymorphisms).
+
 #dim(all_data) #should be 126 x 111 (100 genes, 11 cols of metadata for all 126 samples)
 ```
 
@@ -90,34 +96,24 @@ ggplot(all_data, aes(ABHD17A)) +
 ```
 
 # Visualizing Scatterplot of Gene vs CRP
-
 ```{r}
-
 #scatterplot 
-colorPalette <- c('violetred', 'grey28') #set color palette
+colorPalette <- c('azure4', 'skyblue2', 'slateblue2', 'midnightblue')
 
-crp_filtered <- all_data %>% filter(crp.mg.l. != ' unknown') #filter out unknowns
-crp_filtered$crp.mg.l. <- as.numeric(crp_filtered$crp.mg.l.) #make sure the column is numeric
-crp_means <- crp_filtered %>% group_by(disease_status) %>% summarise(mean_crp = mean(crp.mg.l.))
-
-ggplot(crp_filtered %>% dplyr::arrange(crp.mg.l.), 
-       aes(x = crp.mg.l., y =  ABHD17A, color = disease_status)) + 
-  geom_point() + 
+#all_data$crp.mg.l. <- as.numeric(all_data$crp.mg.l.)
+ggplot(crp_filtered %>% dplyr::arrange(crp.mg.l.), aes(x = crp.mg.l. , y =  ABHD17A , color = crp.level)) +
+  geom_point() +
   theme(
     axis.text.x = element_text(angle=90),
     plot.title = element_text(hjust = .4, size = 20),
-    legend.position = 'right',
-    plot.caption = element_text(hjust = 0, color = 'red', size = 10)
+    legend.position = c(.85,.75)
   ) +
-  labs(title = 'CRP levels vs ABHD17A Expression', 
-       x = 'CRP Level (mg/L)', 
-       y = 'ABHD17A Expression',
-       caption = paste('Mean CRP COVID:', round(crp_means$mean_crp[1], 2), 
-                       'mg/L', 
-                       '                           Mean CRP NON-COVID:', round(crp_means$mean_crp[2],2), 'mg/L')) +
-  scale_color_manual(labels = c('COVID', 'NON-COVID '), values = colorPalette) 
+  labs(title = 'CRP levels vs ABHD17A Expression', x = 'CRP Level (mg/L)', y = 'ABHD17A Expression')  +
+  scale_color_manual(labels = c('Normal (<3mg/L)', 'Moderate (3-10mg/L)', 'High (10 -100mg/L)', 'Severe (>100mg/L)'), values = colorPalette) 
   
+
 ```
+
 
 # Boxplot of Covid and Mechanical Ventilation
 ```{r}

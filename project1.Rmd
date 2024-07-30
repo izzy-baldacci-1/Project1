@@ -44,7 +44,12 @@ genes_t$participant_id[6] <- "COVID_06_:y_male_NonICU" #reassinging value to mat
 all_data <- dplyr::inner_join(genes_t, metadata_clean, by = 'participant_id')
 head(all_data)
 dim(all_data) #should be 126 x 111 (100 genes, 11 cols of metadata for all 126 samples)
+
+crp_filtered <- all_data %>% filter(crp.mg.l. != ' unknown') #filter out unknowns
+crp_filtered$crp.mg.l. <- as.numeric(crp_filtered$crp.mg.l.) #make sure the column is numeric
+crp_filtered$crp.level <- cut(crp_filtered$crp.mg.l., breaks = c(0, 3, 10, 100, 500000), labels = c('normal', 'moderate', 'high', 'severe'))
 ```
+
 ```{r}
 all_data_long <- all_data %>% tidyr::gather(key = Gene, value = count, 1:100)
 all_data_long
@@ -85,18 +90,18 @@ ggplot(all_data, aes(ABHD17A)) +
 ```{r}
 
 #scatterplot 
-colorPalette <- c('violetred', 'grey28')
+colorPalette <- c('azure4', 'skyblue2', 'slateblue3', 'midnightblue')
 
-all_data$crp.mg.l. <- as.numeric(all_data$crp.mg.l.)
-ggplot(all_data %>% filter(crp.mg.l. != ' unknown') %>% dplyr::arrange(crp.mg.l.), aes(x = crp.mg.l. , y =  ABHD17A , color = disease_status)) +
+#all_data$crp.mg.l. <- as.numeric(all_data$crp.mg.l.)
+ggplot(crp_filtered %>% dplyr::arrange(crp.mg.l.), aes(x = crp.mg.l. , y =  ABHD17A , color = crp.level)) +
   geom_point() +
   theme(
     axis.text.x = element_text(angle=90),
     plot.title = element_text(hjust = .4, size = 20),
     legend.position = 'bottom'
   ) +
-  labs(title = 'CRP levels vs ABHD17A Expression', x = 'CRP Level (mg/L)', y = 'ABHD17A Expression') +
-  scale_color_manual(labels = c('COVID', 'NOT COVID '), values = colorPalette) 
+  labs(title = 'CRP levels vs ABHD17A Expression', x = 'CRP Level (mg/L)', y = 'ABHD17A Expression')  +
+  scale_color_manual(labels = c('Normal (<3mg/L)', 'Moderate (3-10mg/L)', 'High (10 -100mg/L)', 'Severe (>100mg/L)'), values = colorPalette) 
   
 
 ```
