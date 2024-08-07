@@ -142,6 +142,66 @@ dplyr::filter(curated_genes_long, Gene == 'ABHD17A') %>%
 
 ```
 
+```{r}
+plots_test <- function(df, genes_list) {
+  return(c(dplyr::select(df, genes_list[1]), dplyr::select(df, genes_list[2])))
+}
+test <- plots_test(all_data, c('AAMP', 'ABHD17A'))
+test[1]
 
+plots_test2 <- function(df, genes_list, cont_cov, cat_cov) {
+  df %>% dplyr::select(participant_id, all_of(genes_list), all_of(cont_cov), all_of(cat_cov))
+}
+plots_test2(all_data, c('AAAS', 'AACS', 'A2M'), 'crp.mg.l.', c('sex', 'icu_status'))
+```
+
+
+```{r}
+plots <- function(df, genes_list, cont_cov, cat_cov) {
+  #what assumptions can we make about the input data frame? is it wide? is it long? or do we have to find that out for ourselves?
+  #should the for loop be in the function to plot multiple genes, or should the loop be a seperate call/function? 
+  #does order of plotting matter- should i put them all on the same "figure" like in assignment 2? 
+  
+  #steps: 
+  # 1) filter data frame for continuous covariate, categorial covariates, gene(s) of interest
+        # assume df input is the combined genes + metadata
+        # including unknowns
+        # call this df_filtered
+  # 2) cast dataframe to long for boxplots 
+        #call this long_df_filtered 
+  # 3) plot histogram 
+  
+  
+  
+  df_filtered <- df %>% dplyr::select(participant_id, all_of(genes_list), all_of(cont_cov), all_of(cat_cov))
+  
+  mean_count <- round(mean(df_filtered$gene),3)
+  sd_count <- round(sd(df_filtered$gene),3)
+  n <- length(df_filtered$gene)
+  title_hist = paste('Distribution of ', gene, '  across samples')
+
+
+  ggplot(all_data, aes(ABHD17A)) +
+    geom_histogram(bins = 30, fill = 'slateblue1') +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = .4, size = 20)) +
+    labs(title = 'Distribution of ABHD17A count across samples', 
+        x = 'ABHD17A Expression', 
+        y = 'Frequency', 
+        size = 20) +
+    scale_color_manual(values = c('slateblue1')) +
+    annotate('rect', 
+           xmin = 22.5, 
+           xmax = 37.5, 
+           ymin = 9, 
+           ymax = 15, fill = 'grey', alpha = .9)+
+    annotate(geom = 'text', x = 30, y = 12, label = paste('N:', length(all_data$ABHD17A),' samples', 
+                                                        '\n Mean Expression:', mean_count, 
+                                                        '\nsd:', sd_count)) 
+  # 4) plot scatterplot 
+  # 5) plot boxplot
+  
+}
+```
 
 

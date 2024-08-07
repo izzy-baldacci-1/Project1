@@ -90,7 +90,7 @@ ggplot(all_data, aes(ABHD17A)) +
 ```{r}
 
 #scatterplot 
-colorPalette <- c('azure4', 'skyblue2', 'slateblue3', 'midnightblue')
+colorPalette <- c('azure4', 'skyblue2', 'slateblue2', 'midnightblue')
 
 #all_data$crp.mg.l. <- as.numeric(all_data$crp.mg.l.)
 ggplot(crp_filtered %>% dplyr::arrange(crp.mg.l.), aes(x = crp.mg.l. , y =  ABHD17A , color = crp.level)) +
@@ -98,11 +98,36 @@ ggplot(crp_filtered %>% dplyr::arrange(crp.mg.l.), aes(x = crp.mg.l. , y =  ABHD
   theme(
     axis.text.x = element_text(angle=90),
     plot.title = element_text(hjust = .4, size = 20),
-    legend.position = 'bottom'
+    legend.position = c(.85,.75)
   ) +
   labs(title = 'CRP levels vs ABHD17A Expression', x = 'CRP Level (mg/L)', y = 'ABHD17A Expression')  +
   scale_color_manual(labels = c('Normal (<3mg/L)', 'Moderate (3-10mg/L)', 'High (10 -100mg/L)', 'Severe (>100mg/L)'), values = colorPalette) 
   
+
+```
+```{r}
+#scatterplot 
+colorPalette <- c('violetred', 'grey28') #set color palette
+
+ggplot(crp_filtered %>% dplyr::arrange(crp.mg.l.), 
+       aes(x = crp.mg.l., y =  ABHD17A, color = disease_status)) + 
+  geom_point() + 
+  theme(
+    axis.text.x = element_text(angle=90),
+    plot.title = element_text(hjust = .4, size = 20),
+    legend.position = 'right',
+    plot.caption = element_text(hjust = 0, color = 'red', size = 10)
+  ) +
+  labs(title = 'CRP levels vs ABHD17A Expression', 
+       x = 'CRP Level (mg/L)', 
+       y = 'ABHD17A Expression',
+       caption = paste('Mean CRP COVID:', round(crp_means$mean_crp[1], 2), 
+                       'mg/L', 
+                       '                           Mean CRP NON-COVID:', round(crp_means$mean_crp[2],2), 'mg/L')) +
+  scale_color_manual(labels = c('COVID', 'NON-COVID '), values = colorPalette) 
+  
+```
+
 
 ```
 
