@@ -56,6 +56,9 @@ crp_filtered$crp.level <- cut(crp_filtered$crp.mg.l., breaks = c(0, 3, 10, 100, 
 #dim(all_data) #should be 126 x 111 (100 genes, 11 cols of metadata for all 126 samples)
 ```
 
+
+
+
 ## Creating long dataframe for later plots
 
 ```{r}
@@ -181,7 +184,7 @@ plots <- function(df, genes_list, cont_cov, cat_cov) {
   title_hist = paste('Distribution of ', gene, '  across samples')
 
 
-  ggplot(all_data, aes(ABHD17A)) +
+  ggplot(df_filtered, aes(gene)) +
     geom_histogram(bins = 30, fill = 'slateblue1') +
     theme_minimal() +
     theme(plot.title = element_text(hjust = .4, size = 20)) +
