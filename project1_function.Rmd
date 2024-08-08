@@ -152,6 +152,7 @@ plots <- function(df, genes_list, cont_cov, cat_cov) {
       one_gene, disease_status != 'disease state: COVID-19')$Expression)
     #set the y value for the annotations as the max of expression so that it will not cover the data
     y_annot <- max(one_gene$Expression)
+    labels_legend <- c(paste('no ', cat_cov[2]), cat_cov[2])
     
     #generate box plot using same parameters as previous assignment
     box <- one_gene %>% ggplot(aes_string(x = cat_cov[1], y = 'Expression', fill = cat_cov[2])) +
@@ -161,7 +162,7 @@ plots <- function(df, genes_list, cont_cov, cat_cov) {
       labs(title = title_box, 
            x = x_lab_box, 
            y = y_lab_box) +
-      scale_fill_manual(labels = c('no ventilator', 'ventilator'), 
+      scale_fill_manual(labels = labels_legend, 
                         values = c('ghostwhite', 'mediumvioletred')) +
       scale_x_discrete(labels = c('COVID', 'NON-COVID')) +
       annotate(geom = 'text', x = 1, y = y_annot + 5, 
