@@ -141,7 +141,7 @@ plots <- function(df, genes_list, cont_cov, cat_cov) {
     print(scatter)
     
     
-    #creat titles for box plot 
+    #create titles for box plot 
     title_box <- paste(gene, ' Expression across ', cat_cov[1], ' and ', cat_cov[2])
     x_lab_box <- cat_cov[1]
     y_lab_box  <- paste(gene, ' Expression')
@@ -155,7 +155,8 @@ plots <- function(df, genes_list, cont_cov, cat_cov) {
     labels_legend <- c(paste('no ', cat_cov[2]), cat_cov[2])
     
     #generate box plot using same parameters as previous assignment
-    box <- one_gene %>% ggplot(aes_string(x = cat_cov[1], y = 'Expression', fill = cat_cov[2])) +
+    box_filtered <- one_gene %>% dplyr::filter(one_gene[[cat_cov[2]]] != ' unknown')
+    box <- box_filtered %>% ggplot(aes_string(x = cat_cov[1], y = 'Expression', fill = cat_cov[2])) +
       geom_boxplot() + 
       theme_minimal() + 
       theme(legend.position = 'bottom') +
