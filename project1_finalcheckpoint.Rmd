@@ -1,0 +1,191 @@
+---
+title: "project1_final_checkpoint"
+output: pdf_document
+date: "2024-08-19"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(ggpubr)
+```
+
+
+# Import data
+```{r}
+genes <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_genes.csv',
+                  sep = ',', header = TRUE)
+metadata <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_series_matrix.csv', 
+                     header = TRUE, stringsAsFactors = TRUE)
+```
+
+```{r}
+#'procalcitonin.ng.ml..' other continuous
+# 'ferritin.ng.ml' other continuous
+# sex other categorical
+```
+
+
+## Clean up metadata
+```{r}
+## cleaning up metadata 
+# metadata were removed if they were not helpful or if they had too many unknowns
+metadata_clean <- dplyr::select(metadata, 
+                                -c("X.Sample_submission_date","channel_count",
+                                   "status","last_update_date","type",
+                                   "channel_count","source_name_ch1",
+                                   "organism_ch1","apacheii",
+                                   "ddimer.mg.l_feu.",
+                                   "lactate.mmol.l.","fibrinogen","sofa"))
+
+```
+
+
+## Transpose Genes dataframe 
+
+```{r}
+#transposing the genes x samples matrix to samples x genes
+rownames(genes) <- genes$X #assigning row names
+genes_t <- as.data.frame(t(dplyr::select(genes, -c('X')))) #transpose as a dataframe
+genes_t$participant_id <- rownames(genes_t) #assigning participant id column for later joining
+#which(genes_t$participant_id == "COVID_06_.y_male_NonICU") #finding column with mismatch to metadata
+genes_t$participant_id[6] <- "COVID_06_:y_male_NonICU" #reassinging value to match metadata
+```
+
+```{r}
+#combining the samples x genes matrix to the metadata
+all_data <- dplyr::inner_join(genes_t, metadata_clean, by = 'participant_id')
+
+#finding all values that would cause issues later
+findNAs <- function(value) {
+    new_val <- ifelse(((value == 'unknown') | 
+                         (value == ' unknown') | 
+                         (value == ' :') | 
+                         (value == " >89")), 
+                      NA, 
+                      value) 
+    return(new_val)
+} 
+
+clean_data <- as.data.frame(apply(all_data, 2, FUN = findNAs))
+head(clean_data)
+```
+
+
+# Summary Statistics 
+```{r}
+#stratified by covid status want:
+# n% on mechanical ventilation
+# n% sex
+# crp.mg.l.: want mean(sd) or median[IQR]
+# ferritin.ng.ml.: want mean(sd) or median[IQR]
+# procalcitonin.ng.ml..: want mean (sd) or median[IQR]
+
+#omitted NAs, which made the dim 97 instead of 126
+table_data <- na.omit(clean_data %>%  
+  dplyr::select('mechanical_ventilation', 'disease_status', 'sex', 'crp.mg.l.', 'ferritin.ng.ml.', 'procalcitonin.ng.ml..'))
+
+table_data$disease_status <- factor(table_data$disease_status, levels = unique(table_data$disease_status))
+table_data$mechanical_ventilation <- factor(table_data$mechanical_ventilation, levels = unique(table_data$mechanical_ventilation))
+table_data$sex <- factor(table_data$sex, levels = unique(table_data$sex))
+table_data$crp.mg.l. <- as.numeric(table_data$crp.mg.l.)
+table_data$ferritin.ng.ml. <- as.numeric(table_data$ferritin.ng.ml.)
+table_data$procalcitonin.ng.ml.. <- as.numeric(table_data$procalcitonin.ng.ml..)
+```
+
+```{r}
+cat_vars_pos <- table_data %>%
+  dplyr::filter(disease_status == 'disease state: COVID-19') %>%
+  dplyr::select('mechanical_ventilation', 'sex', 'procalcitonin.ng.ml..') %>% 
+  apply(MARGIN  = 2, FUN = function(x) {contSummary(x, normal = F)})
+```
+
+
+
+```{r}
+# Define a function to calculate a mean or a median
+contSummary <- function(x,normal = T) {
+
+  #x <- as.numeric(x, na.rm = TRUE)
+  # Calculate mean (sd) if normally distributed (the default)
+  if (normal == T) {
+      # Calculate individual values
+    myMean <- round(mean(x),2)
+    mySD <- round(sd(x),2)
+    # Combine values
+    paste0(myMean,' (',mySD,')')
+  }
+  # Calculate median (IQR) if non-normally distributed
+  else {
+    # Calculate individual values
+    myMedian <- round(median(x, na.rm = TRUE), 2)
+    myIQR <- round(IQR(x), 2)
+    #myIQR1 <- round(quantile(x,1/4),digits = 2)
+    #myIQR2 <- round(quantile(x,3/4),digits = 2)
+    # Combine values
+    paste0(myMedian,' [',myIQR,']')
+  }
+}
+tail(table_data)
+```
+
+```{r}
+cont_vars_pos <- table_data %>% 
+  dplyr::filter(disease_status == 'disease state: COVID-19') %>%
+  dplyr::select('crp.mg.l.', 'ferritin.ng.ml.', 'procalcitonin.ng.ml..') %>% 
+  apply(MARGIN  = 2, FUN = function(x) {contSummary(x, normal = F)})
+
+cont_vars_neg <- table_data %>% 
+  dplyr::filter(disease_status == 'disease state: non-COVID-19') %>%
+  dplyr::select('crp.mg.l.', 'ferritin.ng.ml.', 'procalcitonin.ng.ml..') %>% 
+  apply(MARGIN  = 2, FUN = function(x) {contSummary(x, normal = F)})
+
+```
+
+```{r}
+pos <- as.data.frame(cont_vars_pos)
+print(pos)
+neg <- as.data.frame(cont_vars_neg)
+```
+
+
+
+```{r}
+continuous_variables_table <- merge(cont_vars_pos, cont_vars_neg, by= 'row.names')
+
+cvt <- continuous_variables_table %>% dplyr::rename(Variables = Row.names,
+                                                    Covid.Positive = x,
+                                                    Covid.Negative = y)
+cvt$Variables <- c('CRP (mg/L) Median [IQR]', 'Ferritin (ng/mL) Median[IQR]', 'Procalitonin (ng/mL) Median[IQR]')
+```
+
+
+```{r}
+# Define Table
+#table1 <- data.frame('Variable' = c('CRP Median (IQR)','Procalcitonin Median (IQR)', 'Ferritin Median (IQR)'),
+            #         "COVID-Positive" = test$cont_vars_pos,
+            #         'COVID-Negative' = test2$cont_vars_neg)
+#head(table1)
+# Print table using kable
+tab <- kable(x = cvt, caption = 'Summary Table',
+             format = 'latex',booktabs = T,
+             col.names = c('Variable','Covid Positive', 'Covid Negative'),
+             align = c('l','r'),escape = T) #%>%
+  #add_indent(positions = c(3,3),level_of_indent = 1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
