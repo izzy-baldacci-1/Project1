@@ -9,6 +9,9 @@ knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 library(dplyr)
 library(ggpubr)
+library(knitr)
+library(kableExtra)
+library(pheatmap)
 ```
 
 
@@ -18,12 +21,6 @@ genes <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE1571
                   sep = ',', header = TRUE)
 metadata <- read.csv('/Users/isabellabaldacci/Desktop/QBS103/Project/QBS103_GSE157103_series_matrix.csv', 
                      header = TRUE, stringsAsFactors = TRUE)
-```
-
-```{r}
-#'procalcitonin.ng.ml..' other continuous
-# 'ferritin.ng.ml' other continuous
-# sex other categorical
 ```
 
 
@@ -48,14 +45,18 @@ metadata_clean <- dplyr::select(metadata,
 #transposing the genes x samples matrix to samples x genes
 rownames(genes) <- genes$X #assigning row names
 genes_t <- as.data.frame(t(dplyr::select(genes, -c('X')))) #transpose as a dataframe
+head(genes_t)
+
 genes_t$participant_id <- rownames(genes_t) #assigning participant id column for later joining
 #which(genes_t$participant_id == "COVID_06_.y_male_NonICU") #finding column with mismatch to metadata
 genes_t$participant_id[6] <- "COVID_06_:y_male_NonICU" #reassinging value to match metadata
+head(genes_t)
 ```
 
 ```{r}
 #combining the samples x genes matrix to the metadata
 all_data <- dplyr::inner_join(genes_t, metadata_clean, by = 'participant_id')
+head(all_data)
 
 #finding all values that would cause issues later
 findNAs <- function(value) {
@@ -72,38 +73,8 @@ clean_data <- as.data.frame(apply(all_data, 2, FUN = findNAs))
 head(clean_data)
 ```
 
-
-# Summary Statistics 
 ```{r}
-#stratified by covid status want:
-# n% on mechanical ventilation
-# n% sex
-# crp.mg.l.: want mean(sd) or median[IQR]
-# ferritin.ng.ml.: want mean(sd) or median[IQR]
-# procalcitonin.ng.ml..: want mean (sd) or median[IQR]
-
-#omitted NAs, which made the dim 97 instead of 126
-table_data <- na.omit(clean_data %>%  
-  dplyr::select('mechanical_ventilation', 'disease_status', 'sex', 'crp.mg.l.', 'ferritin.ng.ml.', 'procalcitonin.ng.ml..'))
-
-table_data$disease_status <- factor(table_data$disease_status, levels = unique(table_data$disease_status))
-table_data$mechanical_ventilation <- factor(table_data$mechanical_ventilation, levels = unique(table_data$mechanical_ventilation))
-table_data$sex <- factor(table_data$sex, levels = unique(table_data$sex))
-table_data$crp.mg.l. <- as.numeric(table_data$crp.mg.l.)
-table_data$ferritin.ng.ml. <- as.numeric(table_data$ferritin.ng.ml.)
-table_data$procalcitonin.ng.ml.. <- as.numeric(table_data$procalcitonin.ng.ml..)
-```
-
-```{r}
-cat_vars_pos <- table_data %>%
-  dplyr::filter(disease_status == 'disease state: COVID-19') %>%
-  dplyr::select('mechanical_ventilation', 'sex', 'procalcitonin.ng.ml..') %>% 
-  apply(MARGIN  = 2, FUN = function(x) {contSummary(x, normal = F)})
-```
-
-
-
-```{r}
+#taken from class notes
 # Define a function to calculate a mean or a median
 contSummary <- function(x,normal = T) {
 
@@ -127,8 +98,84 @@ contSummary <- function(x,normal = T) {
     paste0(myMedian,' [',myIQR,']')
   }
 }
-tail(table_data)
+
 ```
+
+
+
+# Summary Statistics 
+```{r}
+
+#omitted NAs, which made the dim 97 instead of 126
+table_data <- na.omit(clean_data %>%  
+  dplyr::select('mechanical_ventilation', 
+                'disease_status', 
+                'sex', 
+                'crp.mg.l.', 
+                'ferritin.ng.ml.', 
+                'procalcitonin.ng.ml..'))
+
+table_data$disease_status <- 
+  factor(table_data$disease_status, 
+         levels = unique(table_data$disease_status))
+
+table_data$mechanical_ventilation <- 
+  factor(table_data$mechanical_ventilation, 
+         levels = unique(table_data$mechanical_ventilation), 
+         labels = c('Mechanical Ventilator', 
+                    'No Mechanical Ventilator'))
+
+table_data$sex <- factor(table_data$sex, 
+                         levels = unique(table_data$sex),
+                         labels = c('Male', 'Female'))
+
+table_data$crp.mg.l. <- as.numeric(table_data$crp.mg.l.)
+table_data$ferritin.ng.ml. <- as.numeric(table_data$ferritin.ng.ml.)
+table_data$procalcitonin.ng.ml.. <- 
+  as.numeric(table_data$procalcitonin.ng.ml..)
+```
+
+
+```{r}
+sn <- as.data.frame(table(table_data$sex, 
+                          table_data$disease_status))
+sp <- as.data.frame(prop.table(table(table_data$sex, 
+                                     table_data$disease_status))) %>% 
+  dplyr::rename('Percent' = 'Freq')
+
+sex <- dplyr::inner_join(sn, sp, by = join_by(Var1, Var2))
+
+mn <- as.data.frame(table(table_data$mechanical_ventilation, 
+                          table_data$disease_status))
+mp <- as.data.frame(prop.table(table(table_data$mechanical_ventilation, 
+                                     table_data$disease_status))) %>% 
+  dplyr::rename('Percent' = 'Freq')
+
+mech <- dplyr::inner_join(mn, mp, by = join_by(Var1, Var2))
+
+dsn <- as.data.frame(table(table_data$disease_status))
+dsp <- as.data.frame(prop.table(table(table_data$disease_status))) %>% 
+  dplyr::rename('Percent' = 'Freq')
+
+ds <- dplyr::inner_join(dsn, dsp, by = join_by(Var1))
+ds$Var2 <- ds$Var1
+ds$Var1 <- c('Disease State', 'Disease State')
+ds <- ds[,c(1,4,2,3)]
+
+all_cat <- dplyr::bind_rows(sex, mech) %>% 
+  dplyr::bind_rows(ds) %>% 
+  dplyr::mutate(as_str = paste0(Freq,' (', 
+                                round(Percent*100,1),')')) %>% 
+  dplyr::select(Var1, Var2, as_str) %>% 
+  tidyr::pivot_wider(names_from = Var2, values_from = as_str)
+
+all_cat_final <- all_cat %>% 
+  dplyr::rename('Variables' = 'Var1') %>% 
+  dplyr::rename('Covid.Positive' = 'disease state: COVID-19', 
+                'Covid.Negative' = 'disease state: non-COVID-19') %>% 
+  dplyr::select(Variables, Covid.Positive, Covid.Negative)
+```
+
 
 ```{r}
 cont_vars_pos <- table_data %>% 
@@ -141,51 +188,282 @@ cont_vars_neg <- table_data %>%
   dplyr::select('crp.mg.l.', 'ferritin.ng.ml.', 'procalcitonin.ng.ml..') %>% 
   apply(MARGIN  = 2, FUN = function(x) {contSummary(x, normal = F)})
 
-```
-
-```{r}
 pos <- as.data.frame(cont_vars_pos)
-print(pos)
 neg <- as.data.frame(cont_vars_neg)
-```
 
-
-
-```{r}
-continuous_variables_table <- merge(cont_vars_pos, cont_vars_neg, by= 'row.names')
-
-cvt <- continuous_variables_table %>% dplyr::rename(Variables = Row.names,
-                                                    Covid.Positive = x,
-                                                    Covid.Negative = y)
-cvt$Variables <- c('CRP (mg/L) Median [IQR]', 'Ferritin (ng/mL) Median[IQR]', 'Procalitonin (ng/mL) Median[IQR]')
 ```
 
 
 ```{r}
-# Define Table
-#table1 <- data.frame('Variable' = c('CRP Median (IQR)','Procalcitonin Median (IQR)', 'Ferritin Median (IQR)'),
-            #         "COVID-Positive" = test$cont_vars_pos,
-            #         'COVID-Negative' = test2$cont_vars_neg)
-#head(table1)
-# Print table using kable
-tab <- kable(x = cvt, caption = 'Summary Table',
+continuous_variables_table <- merge(cont_vars_pos, 
+                                    cont_vars_neg, 
+                                    by= 'row.names')
+
+cvt <- continuous_variables_table %>% 
+  dplyr::rename(Variables = Row.names,
+                Covid.Positive = x, Covid.Negative = y)
+cvt$Variables <- c('CRP (mg/L) Median [IQR]', 
+                   'Ferritin (ng/mL) Median[IQR]', 
+                   'Procalitonin (ng/mL) Median[IQR]')
+```
+
+
+
+
+```{r}
+tableLatex <- dplyr::bind_rows(cvt, all_cat_final) 
+tableLatex <- tableLatex %>% dplyr::add_row(Variables = 'Sex N(%)', 
+                              Covid.Positive = ' ', 
+                              Covid.Negative = ' ',
+                              .before = 4) %>% 
+  dplyr::add_row(Variables = 'Mechanical Ventilation N(%)', 
+                              Covid.Positive = ' ', 
+                              Covid.Negative = ' ',
+                              .before = 7) 
+tableLatex <- tableLatex[c(10, 4,5,6,7,8,9, 1,2,3),]
+
+```
+
+```{r}
+tab2 <- kable(x = tableLatex, caption = 'Summary Table',
              format = 'latex',booktabs = T,
+             row.names = FALSE,
              col.names = c('Variable','Covid Positive', 'Covid Negative'),
-             align = c('l','r'),escape = T) #%>%
-  #add_indent(positions = c(3,3),level_of_indent = 1)
+             align = c('l','r'),escape = T) %>% 
+  add_indent(c(3,4,6,7), all_cols = FALSE, target_cols = 1 )
 ```
 
 
 
 
 
+```{r}
+plots <- function(df, genes_list, cont_cov, cat_cov) {
+  #filter dataframe (received error message indicating to use "all of")
+  df_filtered <- df %>% dplyr::select(participant_id, 
+                                      all_of(genes_list), 
+                                      all_of(cont_cov), 
+                                      all_of(cat_cov)) 
+
+  #cast to long
+  df_filtered_long <- df_filtered %>% tidyr::pivot_longer(cols = genes_list, 
+                                                          names_to = 'Gene', 
+                                                          values_to = 'Expression') 
+
+  for (gene in genes_list){ #for gene in genes list
+    
+    one_gene <- df_filtered_long %>% dplyr::filter(Gene == gene) #get dataframe for one gene
+    
+    #get data for plotting, need mean, sd, and the 75th quantile for positioning annotation box
+    mean_expression <- round(mean(one_gene$Expression), 2)
+    sd_expression <- round(sd(one_gene$Expression), 2)
+    x_min_box <- quantile(one_gene$Expression, 3/4)
+    n <- length(one_gene$Expression)
+    
+    #create labels
+    hist_title <- paste('Distribution of ', gene, ' expression across samples')
+    hist_x <- paste(gene, ' Expression')
+    
+    #plot histogram using theme parameters from previous assignment
+    hist <- one_gene %>% ggplot(aes(Expression)) +
+      geom_histogram(bins = 30, fill = 'slateblue1') +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = .4)) +
+      labs(title = hist_title, 
+       x = hist_x, 
+       y = 'Frequency') +
+      scale_color_manual(values = c('slateblue1')) + 
+      annotate('rect', 
+           xmin = x_min_box + 5, 
+           xmax = x_min_box + 25, 
+           ymin = 10, 
+           ymax = 14, fill = 'grey', alpha = .9)+
+  annotate(geom = 'text', x = x_min_box + 15, y = 12, label = paste('N:', n,' samples', 
+                                                        '\n Mean Expression:', mean_expression, 
+                                                        '\nsd:', sd_expression), size = 2.5)
+    #print to display the histogram
+    print(hist)
+    
+    
+    #filter the data to create the scatter plot 
+    #to avoid warnings of coerced NAs and to ensure cont_cov is numeric
+    scatter_filtered <- one_gene %>% filter(one_gene[[cont_cov]] != ' unknown') 
+    scatter_filtered[cont_cov] <- as.numeric(scatter_filtered[[cont_cov]])
+    #assign the levels for crp
+    if (cont_cov == 'crp.mg.l.') {
+      scatter_filtered$crp.level <- cut(scatter_filtered$crp.mg.l., 
+                                        breaks = c(0, 3, 10, 100, 500000), 
+                                        labels = c('normal', 'moderate', 'high', 'severe'))
+    }
+    
+    #set color palette and titles
+    colorPalette_scatter <- c('azure4', 'skyblue2', 'slateblue2', 'midnightblue')
+    title_scatter <- paste(toupper(cont_cov), ' vs ', gene, ' Expression')
+    x_scatter <- paste(toupper(cont_cov), '(mg/L)')
+    y_scatter <- paste(gene, ' Expression')
+    
+    #create scatterplot with parameters from previous assignment
+    scatter <- scatter_filtered %>% ggplot(aes(x = .data[[cont_cov]], 
+                                               y = Expression, 
+                                               color = crp.level)) +
+      geom_point(na.rm = TRUE) + 
+      theme(
+        axis.text.x = element_text(angle=90),
+        plot.title = element_text(hjust = .4),
+        legend.position = c(.85,.75)) +
+      labs(title = title_scatter, x = x_scatter, y = y_scatter)  +
+      scale_color_manual(labels = 
+                           c('Normal (<3mg/L)', 'Moderate (3-10mg/L)', 
+                             'High (10 -100mg/L)', 'Severe (>100mg/L)'), 
+                         values = colorPalette_scatter) 
+  
+    #print scatterplot
+    print(scatter)
+    
+    
+    #create titles for box plot 
+    title_box <- paste(gene, ' Expression across ', cat_cov[1], ' and ', cat_cov[2])
+    x_lab_box <- cat_cov[1]
+    y_lab_box  <- paste(gene, ' Expression')
+    #get num_covid positive and negative for annotations
+    n_covid_pos <- length(dplyr::filter(
+      one_gene, disease_status == 'disease state: COVID-19')$Expression)
+    n_covid_neg <- length(dplyr::filter(
+      one_gene, disease_status != 'disease state: COVID-19')$Expression)
+    #set the y value for the annotations as the max of expression so that it will not cover the data
+    y_annot <- max(one_gene$Expression)
+    labels_legend <- c(paste('no ', cat_cov[2]), cat_cov[2])
+    
+    #generate box plot using same parameters as previous assignment
+    box_filtered <- one_gene %>% dplyr::filter(one_gene[[cat_cov[2]]] != ' unknown')
+    box <- box_filtered %>% ggplot(aes_string(x = cat_cov[1], y = 'Expression', fill = cat_cov[2])) +
+      geom_boxplot() + 
+      theme_minimal() + 
+      theme(legend.position = 'bottom') +
+      labs(title = title_box, 
+           x = x_lab_box, 
+           y = y_lab_box) +
+      scale_fill_manual(labels = labels_legend, 
+                        values = c('ghostwhite', 'mediumvioletred')) +
+      scale_x_discrete(labels = c('COVID', 'NON-COVID')) +
+      annotate(geom = 'text', x = 1, y = y_annot + 5, 
+               label = paste('Covid positive: N = ', n_covid_pos), 
+               color = 'black')+
+      annotate(geom = 'text', x = 2, y = y_annot + 5, 
+               label = paste('Covid negative: N = ', n_covid_neg), 
+               color = 'black')
+    print(box)
+
+  } 
+  }
+```
+
+```{r}
+#a few warnings about deprecated methods, did not cause 
+#problems so decided to suppress for final output
+suppressWarnings({ plots(all_data, c('ABHD17A'), 
+      c('crp.mg.l.'), 
+      c('disease_status', 'mechanical_ventilation')) } )
+```
+
+```{r}
+
+interesting_genes <- c('AAAS', 'AACS', 'A2M', 'AAGAB','AAK1','ABCD1','ABCG1', 'ABHD17A', 
+                       'ABHD17A','ABI1','AAMP', 'AATK','ABAT',
+                       'ABCA1','ABCB10','ABHD13','ABHD3')
+
+genesHM <- as.data.frame(clean_data %>% 
+  dplyr::select(all_of(interesting_genes)) %>% 
+  apply(MARGIN = 2, as.numeric)) 
+
+genesHM$mechanical_ventilation <- factor(clean_data$mechanical_ventilation, 
+                                         levels = unique(clean_data$mechanical_ventilation))
+genesHM$disease_status <- factor(clean_data$disease_status, 
+                                 levels = unique(clean_data$disease_status))
+
+tgenesHM <- as.data.frame(t(genesHM[,1:16]))
+
+annotationColumns <- genesHM %>% dplyr::select('disease_status', 'mechanical_ventilation')
+
+row.names(annotationColumns) = colnames(tgenesHM)
 
 
+annotationColors <- list(Disease_status = c('COVID-19' = 'lightsalmon',
+                                    'non-COVID-19' = 'slateblue4'),
+                         Mech_Ventilation = c('yes' = 'red', 
+                                                    'no' = 'green'))
 
 
+pheatmap(tgenesHM,
+         color = colorRampPalette(c('lavender', 'maroon1', 'yellow'))((500)),
+         cluster_rows = T,
+         cluster_cols = T,
+         annotation_col = annotationColumns,
+         annotation_colors = annotationColors,
+         show_colnames = FALSE,
+         main = 'Gene expression by mechanical ventilation and disease status',
+         fontsize = 6)
+```
 
 
+```{r}
+# tgenesHM
+# genesHM
+#first attempt at getting a diverging bar chart 
+#get one gene, add a column for standardized data and add participant id for later plotting
+test <- genesHM['AAAS'] %>% dplyr::mutate(z = (AAAS - mean(AAAS))/sd(AAAS))
+test$participant <- clean_data$participant_id
+test$disease_status <- factor(clean_data$disease_status, levels = unique(clean_data$disease_status))
+#order by the standard values, add flag for above or below the mean to 
+test_order <- test %>% dplyr::arrange(z)
+test_order$flag <- ifelse(test_order$z > 0, 'above', 'below')
+test_order$participant <- factor(test_order$participant, levels = test_order$participant)
 
+ggplot(test_order, aes(x= participant, y=z, label=z)) +
+  geom_bar(stat='identity', aes(fill=disease_status), width=.5) +
+  scale_fill_manual(name="Expression",
+                    labels = c("COVID19", "NO COVID19"), 
+                    values = c("disease state: COVID-19"="#00ba38", "disease state: non-COVID-19"="#f8766d")) +
+  labs(subtitle="Normalised expression for AAAS'",
+       title= "Diverging Bars") +
+  theme(axis.text.y = element_text(size = 4, angle = 45)) +
+  coord_flip()
+```
+
+
+```{r}
+#plot tutorial from: https://www.tutorialspoint.com/ggplot2/ggplot2_diverging_charts.htm
+
+genes_medians <- genes_t %>% 
+  #select all cols except participant_id
+  dplyr::select(-c('participant_id')) %>% 
+  #apply summary function, in this case we will use median
+  apply(MARGIN=2, FUN=median) %>% 
+  #convert to dataframe and clean up names
+  as.data.frame() %>% 
+  dplyr::rename('median_exp' = '.') %>% 
+  #add the z column, sort by the z_column
+  dplyr::mutate(median_z = round((median_exp - mean(median_exp))/sd(median_exp), 3)) %>% 
+  dplyr::arrange(median_z) #%>% 
+  #dplyr::filter(median_exp > 4)
+
+genes_medians$flag <- ifelse(genes_medians$median_z > 0, 'above', 'below')
+genes_medians$gene_name <- factor(rownames(genes_medians), levels = rownames(genes_medians))
+#plot_gene <- genes_medians %>% filter(median_z)
+#plot_gene <- genes_medians[56:86,]
+  
+ggplot(genes_medians, aes(x = gene_name, y = median_z, label = median_z)) +
+  geom_point(stat = 'identity', aes(color = flag), size = 6) +
+  geom_segment(aes(y = 0, x = gene_name, yend = median_z, xend = gene_name)) +
+  scale_color_manual(name="Expression",
+                    labels = c("Above Median", "Below Median"), 
+                    values = c("above"="#00ba38", "below"="#f8766d")) +
+  geom_text(color = 'white',size = 1.75) +
+  labs(title="Diverging Lollipop Chart",
+    subtitle="Normalized median gene expression") +
+  ylim(-3, 3) +
+  coord_flip()
+```
 
 
 
