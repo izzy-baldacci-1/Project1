@@ -419,11 +419,11 @@ plot_diverging <- function(df, gene1) {
   plotting_df$participant <- factor(plotting_df$participant, levels = unique(plotting_df$participant))
   
   final_plot <- ggplot(plotting_df, aes(x = participant, y = z, label = z)) +
-    geom_bar(stat='identity', aes(fill = disease_status), width = .5) +
+    geom_bar(stat='identity', aes(fill = disease_status), width = .9) +
     scale_fill_manual(name = 'Disease State',
                       labels = c('COVID-19', 'NON-COVID-19'),
-                      values = c("disease state: COVID-19"="red4", "disease state: non-COVID-19"="limegreen")) +
-    labs(title= paste("Normalised expression for", gene1, 'across participants'),
+                      values = c("disease state: COVID-19"="plum2", "disease state: non-COVID-19"="limegreen")) +
+    labs(title= paste("Normalised expression for", gene1),
        y = 'Normalized expression',
        x = 'Participant') +
     theme(axis.text.y = element_blank()) +
@@ -434,70 +434,17 @@ plot_diverging <- function(df, gene1) {
 ```
 
 ```{r}
-plot_diverging(clean_data, 'ABHD3')
+a <- plot_diverging(clean_data, 'ABI1')
+b <- plot_diverging(clean_data, 'ABHD3')
+c <- plot_diverging(clean_data, 'ABHD17A')
+d <- plot_diverging(clean_data, 'AAMP')
+
+ggpubr::ggarrange(a,b,c,d, common.legend = T)
 ```
 
 
 ```{r}
-# tgenesHM
-# genesHM
-#first attempt at getting a diverging bar chart 
-#get one gene, add a column for standardized data and add participant id for later plotting
-test <- genesHM['AAAS'] %>% dplyr::mutate(z = (AAAS - mean(AAAS))/sd(AAAS))
-test$participant <- clean_data$participant_id
-test$disease_status <- factor(clean_data$disease_status, levels = unique(clean_data$disease_status))
-#order by the standard values, add flag for above or below the mean to 
-test_order <- test %>% dplyr::arrange(z)
-test_order$flag <- ifelse(test_order$z > 0, 'above', 'below')
-test_order$participant <- factor(test_order$participant, levels = test_order$participant)
 
-ggplot(test_order, aes(x= participant, y=z, label=z)) +
-  geom_bar(stat='identity', aes(fill=disease_status), width=.5) +
-  scale_fill_manual(name="Expression",
-                    labels = c("COVID19", "NO COVID19"), 
-                    values = c("disease state: COVID-19"="#00ba38", "disease state: non-COVID-19"="#f8766d")) +
-  labs(subtitle="Normalised expression for AAAS",
-       title= "Diverging Bars",
-       y = 'Normalized expression',
-       x = 'Participant') +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank()) +
-  coord_flip()
-```
-
-
-```{r}
-#plot tutorial from: https://www.tutorialspoint.com/ggplot2/ggplot2_diverging_charts.htm
-
-genes_medians <- genes_t %>% 
-  #select all cols except participant_id
-  dplyr::select(-c('participant_id')) %>% 
-  #apply summary function, in this case we will use median
-  apply(MARGIN=2, FUN=median) %>% 
-  #convert to dataframe and clean up names
-  as.data.frame() %>% 
-  dplyr::rename('median_exp' = '.') %>% 
-  #add the z column, sort by the z_column
-  dplyr::mutate(median_z = round((median_exp - mean(median_exp))/sd(median_exp), 3)) %>% 
-  dplyr::arrange(median_z) #%>% 
-  #dplyr::filter(median_exp > 4)
-
-genes_medians$flag <- ifelse(genes_medians$median_z > 0, 'above', 'below')
-genes_medians$gene_name <- factor(rownames(genes_medians), levels = rownames(genes_medians))
-#plot_gene <- genes_medians %>% filter(median_z)
-#plot_gene <- genes_medians[56:86,]
-  
-ggplot(genes_medians, aes(x = gene_name, y = median_z, label = median_z)) +
-  geom_point(stat = 'identity', aes(color = flag), size = 6) +
-  geom_segment(aes(y = 0, x = gene_name, yend = median_z, xend = gene_name)) +
-  scale_color_manual(name="Expression",
-                    labels = c("Above Median", "Below Median"), 
-                    values = c("above"="#00ba38", "below"="#f8766d")) +
-  geom_text(color = 'white',size = 1.75) +
-  labs(title="Diverging Lollipop Chart",
-    subtitle="Normalized median gene expression") +
-  ylim(-3, 3) +
-  coord_flip()
 ```
 
 
