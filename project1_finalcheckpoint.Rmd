@@ -404,6 +404,38 @@ pheatmap(tgenesHM,
          main = 'Gene expression by mechanical ventilation and disease status',
          fontsize = 6)
 ```
+```{r}
+plot_diverging <- function(df, gene1) {
+  plotting_df <- df %>% dplyr::select(gene1)
+  plotting_df$my_gene <- as.numeric(df[[gene1]])
+
+  plotting_df$participant <- seq(1:length(plotting_df$my_gene))
+  plotting_df$disease_status <- factor(df$disease_status, levels = unique(df$disease_status))
+
+  plotting_df <- plotting_df %>% 
+    dplyr::mutate(z = (my_gene - mean(my_gene))/sd(my_gene)) %>% 
+    dplyr::arrange(z)
+  
+  plotting_df$participant <- factor(plotting_df$participant, levels = unique(plotting_df$participant))
+  
+  final_plot <- ggplot(plotting_df, aes(x = participant, y = z, label = z)) +
+    geom_bar(stat='identity', aes(fill = disease_status), width = .5) +
+    scale_fill_manual(name = 'Disease State',
+                      labels = c('COVID-19', 'NON-COVID-19'),
+                      values = c("disease state: COVID-19"="red4", "disease state: non-COVID-19"="limegreen")) +
+    labs(title= paste("Normalised expression for", gene1, 'across participants'),
+       y = 'Normalized expression',
+       x = 'Participant') +
+    theme(axis.text.y = element_blank()) +
+    coord_flip()
+                        
+  return(final_plot)
+}
+```
+
+```{r}
+plot_diverging(clean_data, 'ABHD3')
+```
 
 
 ```{r}
@@ -424,9 +456,12 @@ ggplot(test_order, aes(x= participant, y=z, label=z)) +
   scale_fill_manual(name="Expression",
                     labels = c("COVID19", "NO COVID19"), 
                     values = c("disease state: COVID-19"="#00ba38", "disease state: non-COVID-19"="#f8766d")) +
-  labs(subtitle="Normalised expression for AAAS'",
-       title= "Diverging Bars") +
-  theme(axis.text.y = element_text(size = 4, angle = 45)) +
+  labs(subtitle="Normalised expression for AAAS",
+       title= "Diverging Bars",
+       y = 'Normalized expression',
+       x = 'Participant') +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) +
   coord_flip()
 ```
 
