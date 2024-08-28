@@ -253,6 +253,7 @@ plots <- function(df, genes_list, cont_cov, cat_cov) {
   for (gene in genes_list){ #for gene in genes list
     
     one_gene <- df_filtered_long %>% dplyr::filter(Gene == gene) #get dataframe for one gene
+    one_gene$Expression <- as.numeric(na.omit(one_gene$Expression))
     
     #get data for plotting, need mean, sd, and the 75th quantile for positioning annotation box
     mean_expression <- round(mean(one_gene$Expression), 2)
@@ -298,8 +299,10 @@ plots <- function(df, genes_list, cont_cov, cat_cov) {
     
     #set color palette and titles
     colorPalette_scatter <- c('azure4', 'skyblue2', 'slateblue2', 'midnightblue')
-    title_scatter <- paste(toupper(cont_cov), ' vs ', gene, ' Expression')
-    x_scatter <- paste(toupper(cont_cov), '(mg/L)')
+    
+    x_scatter_split <- strsplit(x = cont_cov, split = '\\.')[[1]][1]
+    x_scatter <- paste(toupper(x_scatter_split), '(mg/L)')
+    title_scatter <- paste(x_scatter, ' vs ', gene, ' Expression')
     y_scatter <- paste(gene, ' Expression')
     
     #create scatterplot with parameters from previous assignment
@@ -322,8 +325,8 @@ plots <- function(df, genes_list, cont_cov, cat_cov) {
     
     
     #create titles for box plot 
-    title_box <- paste(gene, ' Expression across ', cat_cov[1], ' and ', cat_cov[2])
-    x_lab_box <- cat_cov[1]
+    title_box <- paste(gene, ' Expression across Disease Status and Mechanical Ventilation')
+    x_lab_box <- 'Disease Status'
     y_lab_box  <- paste(gene, ' Expression')
     #get num_covid positive and negative for annotations
     n_covid_pos <- length(dplyr::filter(
@@ -332,7 +335,7 @@ plots <- function(df, genes_list, cont_cov, cat_cov) {
       one_gene, disease_status != 'disease state: COVID-19')$Expression)
     #set the y value for the annotations as the max of expression so that it will not cover the data
     y_annot <- max(one_gene$Expression)
-    labels_legend <- c(paste('no ', cat_cov[2]), cat_cov[2])
+    labels_legend <- c('no mechanical ventilation', 'mechanical ventilation')
     
     #generate box plot using same parameters as previous assignment
     box_filtered <- one_gene %>% dplyr::filter(one_gene[[cat_cov[2]]] != ' unknown')
@@ -342,9 +345,11 @@ plots <- function(df, genes_list, cont_cov, cat_cov) {
       theme(legend.position = 'bottom') +
       labs(title = title_box, 
            x = x_lab_box, 
-           y = y_lab_box) +
+           y = y_lab_box,
+           colour = 'Mechanical Ventilation') +
+      guides(fill=guide_legend(title="Mechanical Ventilation")) +
       scale_fill_manual(labels = labels_legend, 
-                        values = c('ghostwhite', 'mediumvioletred')) +
+                        values = c('ghostwhite', 'mediumvioletred'))+
       scale_x_discrete(labels = c('COVID', 'NON-COVID')) +
       annotate(geom = 'text', x = 1, y = y_annot + 5, 
                label = paste('Covid positive: N = ', n_covid_pos), 
@@ -354,23 +359,26 @@ plots <- function(df, genes_list, cont_cov, cat_cov) {
                color = 'black')
     print(box)
 
-  } 
+  }
   }
 ```
 
 ```{r}
 #a few warnings about deprecated methods, did not cause 
 #problems so decided to suppress for final output
-suppressWarnings({ plots(all_data, c('ABHD17A'), 
+suppressWarnings({ plots(clean_data, c('ABHD17A'), 
       c('crp.mg.l.'), 
       c('disease_status', 'mechanical_ventilation')) } )
 ```
+
+
+
 
 ```{r}
 
 interesting_genes <- c('AAAS', 'AACS', 'A2M', 'AAGAB','AAK1','ABCD1','ABCG1', 'ABHD17A', 
                        'ABHD17A','ABI1','AAMP', 'AATK','ABAT',
-                       'ABCA1','ABCB10','ABHD13','ABHD3')
+                       'ABCA1','ABCB10','ABHD13', 'ABHD3')
 
 genesHM <- as.data.frame(clean_data %>% 
   dplyr::select(all_of(interesting_genes)) %>% 
@@ -406,7 +414,7 @@ pheatmap(tgenesHM,
 ```
 ```{r}
 plot_diverging <- function(df, gene1) {
-  plotting_df <- df %>% dplyr::select(gene1)
+  plotting_df <- df %>% dplyr::select(all_of(gene1))
   plotting_df$my_gene <- as.numeric(df[[gene1]])
 
   plotting_df$participant <- seq(1:length(plotting_df$my_gene))
@@ -423,7 +431,7 @@ plot_diverging <- function(df, gene1) {
     scale_fill_manual(name = 'Disease State',
                       labels = c('COVID-19', 'NON-COVID-19'),
                       values = c("disease state: COVID-19"="plum2", "disease state: non-COVID-19"="limegreen")) +
-    labs(title= paste("Normalised expression for", gene1),
+    labs(title= paste("Normalized expression for", gene1),
        y = 'Normalized expression',
        x = 'Participant') +
     theme(axis.text.y = element_blank()) +
@@ -444,7 +452,7 @@ ggpubr::ggarrange(a,b,c,d, common.legend = T)
 
 
 ```{r}
-
+R.Version()
 ```
 
 
